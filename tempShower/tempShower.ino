@@ -1,5 +1,7 @@
 //nano
 //распиновка
+#define test_git 0
+
 #define btn1_pin 0
 #define btn1_led 1
 #define btn2_pin 3

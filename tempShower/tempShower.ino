@@ -216,8 +216,8 @@ void heat_LCD(){
   
 }
 //========================================== считывание и отображение температуры ==================
-void temperature(int temp_set){
-  if ((millis()-timeT)>temp_set){
+void temperature(int time_ask_temperature){
+  if ((millis()-timeT)>time_ask_temperature){
     sensors.requestTemperatures();
     T=sensors.getTempCByIndex(0);
     temp= T;

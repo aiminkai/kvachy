@@ -1,7 +1,5 @@
 //nano
 //распиновка
-#define test_git 0
-
 #define btn1_pin 0
 #define btn1_led 1
 #define btn2_pin 3
@@ -15,7 +13,7 @@
 
 #define level_sens2 8         // уровень воды 1/3 (бело-коричневый пин 4 разъема 1 корпусного)
 
-////радиомодуль CE-9; CSN-10; SCK-13; MO-11; MI-12
+////радиомодуль CE-9; CSN-10; SCK-13; MO-11; MI-12 будет добавлен позже
 
 #define shwIsEmpty_led 14     //светодиод пустого бака
 
@@ -40,7 +38,7 @@ LCD_1602_RUS lcd(0x27, 16, 2); // в скобках дефолтные наст�
 #define INIT_ADDR 1023  // номер резервной ячейки для первой записи в eeprom 
 #define INIT_KEY 50     // ключ первого запуска. 0-254, на выбор
 
-int tempSet=30;                    // уставка преобразованная в пакет отправки 
+int temp_set=30;                    // уставка преобразованная в пакет отправки 
 int temp= 10;
 float T;
 long timeT=0;
@@ -55,6 +53,8 @@ boolean shwIsEmpty=false;         // душ 1/3
 boolean btn1Led=false;            // подсветка кнопки 1 
 boolean btn2Led=false;            // подсветка кнопки 2
 boolean lightIsOn=false;          // свет 
+
+uint8_t oldPIND = 0xFF;
 
 boolean btn1_flag=false;
 boolean btn1;
@@ -92,7 +92,6 @@ long btnEnc_Release_time=0;
 #define  dbc 80         // время дребезга
 #define  dbc2 800         // время дребезга2
 
-#define  testGit         // тест гита
 
 //************************************************************************************************
 //************************************************************************************************
@@ -101,8 +100,8 @@ void setup(){
   
    if (EEPROM.read(INIT_ADDR) != INIT_KEY) { // первый запуск
        EEPROM.write(INIT_ADDR, INIT_KEY);    // записали ключ
-       EEPROM.write(0, tempSet);}
-    tempSet=EEPROM.read(0);
+       EEPROM.write(0, temp_set);}
+    temp_set=EEPROM.read(0);
    
 //============= button && rele && level sensor ===============================================================================
 
@@ -121,8 +120,9 @@ pinMode(shwIsEmpty_led, OUTPUT);
   digitalWrite(btn2_led, LOW);
   digitalWrite(shwIsEmpty_led, LOW);
 
+  pciSetup(btn1_pin); 
+  pciSetup(btn2_pin);
   
-
 //=============temp sens=========================================================================
   sensors.begin();
 
@@ -146,13 +146,13 @@ pinMode(shwIsEmpty_led, OUTPUT);
 //************************************************************************************************
 void loop() {
 
-button1();
+//button1();
 
 if (!modeMenu){
 
   if (!heatIsOn)  temperature(60000);
   else if (heatIsOn) temperature(3000);
-button2();      
+//button2();      
 level_sensor1();
 level_sensor2();
 }
@@ -166,7 +166,7 @@ settings();
 void menu_LCD(){
    lcd.clear();
      lcd.setCursor(5, 0); lcd.print(L"греть до:");
-     lcd.setCursor(7, 1); lcd.print(tempSet);
+     lcd.setCursor(7, 1); lcd.print(temp_set);
      lcd.setCursor(9, 1);
      lcd.print((char)223);
      lcd.setCursor(10, 1);
@@ -199,7 +199,7 @@ void heat_LCD(){
   lcd.setCursor(1, 0);
   lcd.print(L"Нагрев до");
   lcd.setCursor(11, 0);
-  lcd.print(tempSet);
+  lcd.print(temp_set);
   lcd.setCursor(13, 0);
   lcd.print((char)223);
   lcd.setCursor(14, 0);
@@ -219,8 +219,8 @@ void heat_LCD(){
   
 }
 //========================================== считывание и отображение температуры ==================
-void temperature(int temp_set){
-  if ((millis()-timeT)>temp_set){
+void temperature(int time_ask_temperature){
+  if ((millis()-timeT)>time_ask_temperature){
     sensors.requestTemperatures();
     T=sensors.getTempCByIndex(0);
     temp= T;
@@ -236,6 +236,60 @@ void temperature(int temp_set){
   }
 }
 
+//============================ ISR btn1 (свет) ===================================
+ISR (PCINT2_vect) {
+btn1 = !digitalRead(btn1_pin); // считать текущее положение кнопки
+  
+  if (btn1 == 1 && btn1_flag == 0) // кнопка нажата, выставляю флаг
+  {       
+    btn1_flag=1;
+  }
+
+  if (btn1==0 && btn1_flag == 1)                      // кнопка отжата, начинаем обработку
+  {                                   
+    lightIsOn=!lightIsOn;
+    digitalWrite(rele_light, lightIsOn);
+    digitalWrite(btn1_led, !lightIsOn);        
+    if (!lightIsOn)  shwIsFullLightState=false; 
+    btn1_flag=0;
+   }
+//***************************************************************************
+btn2 = !digitalRead(btn2_pin); // считать текущее положение кнопки
+  
+  if (btn2 == 1 && btn2_flag == 0 && !modeMenu) // кнопка нажата, выставляю флаг
+  {       
+    btn2_flag=1;
+   }
+
+  if (btn2==0 && btn2_flag == 1)                      // кнопка отжата, начинаем обработку
+  {
+    heatIsOn=!heatIsOn;
+    digitalWrite(btn2_led, heatIsOn);
+    digitalWrite(rele_heat, !heatIsOn);
+    heatHyst=false;
+    if (heatIsOn){heat_LCD();}
+    else  if (!heatIsOn){main_LCD();}
+    btn2_flag=0;              
+   }
+
+  if (heatIsOn && temp>=temp_set && !modeMenu&&!heatHyst){          // если флаг heatIsOn 1, текущая t больше или равна уставке - выключать нагрев и менять флаг гистерезиса на 1 (включить догрев)
+   heatHyst=true;                                    //гистерезис догрева
+   digitalWrite(rele_heat, HIGH);
+  
+   lightIsOn=true;                              //Включаем свет для инидикации, что вода нагрелась                        
+   digitalWrite(rele_light, LOW);
+   digitalWrite(btn1_led, HIGH); 
+   
+   heat_LCD();
+  }
+  
+  if (heatIsOn&&(temp_set-temp>=1)&&!modeMenu&&heatHyst){
+    heatHyst=false;                               //гистерезис догрева  
+    digitalWrite(rele_heat, LOW);
+    heat_LCD();
+   }
+   
+}
 //============================ btn1 (свет) ===================================
 void button1(){
 btn1 = !digitalRead(btn1_pin); // считать текущее положение кнопки
@@ -287,7 +341,7 @@ void button2(){
          }
    }
 
-  if (heatIsOn && temp>=tempSet && !modeMenu&&!heatHyst){          // если флаг heatIsOn 1, текущая t больше или равна уставке - выключать нагрев и менять флаг гистерезиса на 1 (включить догрев)
+  if (heatIsOn && temp>=temp_set && !modeMenu&&!heatHyst){          // если флаг heatIsOn 1, текущая t больше или равна уставке - выключать нагрев и менять флаг гистерезиса на 1 (включить догрев)
   heatHyst=true;                                    //гистерезис догрева
   digitalWrite(rele_heat, HIGH);
   
@@ -298,7 +352,7 @@ void button2(){
   heat_LCD();
    }
   
-  if (heatIsOn&&(tempSet-temp>=1)&&!modeMenu&&heatHyst){
+  if (heatIsOn&&(temp_set-temp>=1)&&!modeMenu&&heatHyst){
     heatHyst=false;                               //гистерезис догрева  
   digitalWrite(rele_heat, LOW);
   heat_LCD();
@@ -409,7 +463,7 @@ btnEnc = !digitalRead(SW); // считать текущее положение �
                  modeSave=false;
                  modeMenu=false;
                  modeSave_yes=false;
-                 EEPROM.write(0, tempSet);
+                 EEPROM.write(0, temp_set);
                  if (heatIsOn){heat_LCD();}
                  else  if (!heatIsOn){main_LCD();}
                 }
@@ -438,8 +492,8 @@ btnEnc = !digitalRead(SW); // считать текущее положение �
     }
      if (encData_true>encData_temp) 
        { if (!modeSave)
-            {tempSet=tempSet+1;
-             if (tempSet>50) tempSet=50;
+            {temp_set=temp_set+1;
+             if (temp_set>50) temp_set=50;
              menu_LCD ();
             }
         else  if (modeSave)
@@ -451,8 +505,8 @@ btnEnc = !digitalRead(SW); // считать текущее положение �
        }
      if (encData_true<encData_temp) 
        { if (!modeSave)
-            {tempSet=tempSet-1;
-             if (tempSet<0) tempSet=0;
+            {temp_set=temp_set-1;
+             if (temp_set<0) temp_set=0;
              menu_LCD ();
             }
         else  if (modeSave)
@@ -464,4 +518,10 @@ btnEnc = !digitalRead(SW); // считать текущее положение �
        }
  }
 } 
- 
+
+
+ void pciSetup(byte pin) {
+  *digitalPinToPCMSK(pin) |= bit (digitalPinToPCMSKbit(pin));  // Разрешаем PCINT для указанного пина
+  PCIFR  |= bit (digitalPinToPCICRbit(pin)); // Очищаем признак запроса прерывания для соответствующей группы пинов
+  PCICR  |= bit (digitalPinToPCICRbit(pin)); // Разрешаем PCINT для соответствующей группы пинов
+}

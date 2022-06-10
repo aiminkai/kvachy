@@ -100,6 +100,7 @@ void setup(){
        EEPROM.write(INIT_ADDR, INIT_KEY);    // записали ключ
        EEPROM.write(0, tempSet);}
     tempSet=EEPROM.read(0);
+    lightIsOn=EEPROM.read(1);
    
 //============= button && rele && level sensor ===============================================================================
 
@@ -113,12 +114,11 @@ pinMode(btn1_led, OUTPUT);
 pinMode(btn2_led, OUTPUT);
 pinMode(shwIsEmpty_led, OUTPUT);
   digitalWrite(rele_heat, HIGH);
-  digitalWrite(rele_light, HIGH);
-  digitalWrite(btn1_led, LOW);
+  digitalWrite(rele_light, lightIsOn);
+  digitalWrite(btn1_led, !lightIsOn);
   digitalWrite(btn2_led, LOW);
   digitalWrite(shwIsEmpty_led, LOW);
 
-  
 
 //=============temp sens=========================================================================
   sensors.begin();
@@ -247,14 +247,13 @@ btn1 = !digitalRead(btn1_pin); // считать текущее положени
   {
     btn1_flag=0;
     btn1_Release_time=millis();
-   
-    if (btn1_Release_time - btn1_Press_time < hold_time)  // если кратковременное нажатие
-        {                                                    
+                                           
          lightIsOn=!lightIsOn;
          digitalWrite(rele_light, lightIsOn);
-         digitalWrite(btn1_led, !lightIsOn);        
+         digitalWrite(btn1_led, !lightIsOn);      
+         EEPROM.write(1, lightIsOn);  
          if (!lightIsOn)  shwIsFullLightState=false;
-         }
+         
    }
 }
 
@@ -273,15 +272,14 @@ void button2(){
     btn2_flag=0;
     btn2_Release_time=millis();
    
-    if (btn2_Release_time - btn2_Press_time < hold_time)
-        {                                                     // если кратковременное нажатие
+   
           heatIsOn=!heatIsOn;
           digitalWrite(btn2_led, heatIsOn);
           digitalWrite(rele_heat, !heatIsOn);
           heatHyst=false;
          if (heatIsOn){heat_LCD();}
           else  if (!heatIsOn){main_LCD();}        
-         }
+         
    }
 
   if (heatIsOn && temp>=tempSet && !modeMenu&&!heatHyst){          // если флаг heatIsOn 1, текущая t больше или равна уставке - выключать нагрев и менять флаг гистерезиса на 1 (включить догрев)
@@ -329,6 +327,7 @@ if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull)
   if (millis()-shwIsFull_time>15000 && shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 5 секунд
     digitalWrite(rele_light, HIGH);
     digitalWrite(btn1_led, LOW);
+    lightIsOn=false;
     shwIsFullLightState=false; 
   }
 }

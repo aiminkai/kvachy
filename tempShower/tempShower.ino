@@ -13,7 +13,7 @@
 
 #define level_sens2 8         // уровень воды 1/3 (бело-коричневый пин 4 разъема 1 корпусного)
 
-////радиомодуль CE-9; CSN-10; SCK-13; MO-11; MI-12 будет добавлен позже
+////радиомодуль CE-9; CSN-10; SCK-13; MO-11; MI-12
 
 #define shwIsEmpty_led 14     //светодиод пустого бака
 
@@ -102,6 +102,7 @@ void setup(){
        EEPROM.write(INIT_ADDR, INIT_KEY);    // записали ключ
        EEPROM.write(0, temp_set);}
     temp_set=EEPROM.read(0);
+    lightIsOn=EEPROM.read(1);
    
 //============= button && rele && level sensor ===============================================================================
 
@@ -115,8 +116,8 @@ pinMode(btn1_led, OUTPUT);
 pinMode(btn2_led, OUTPUT);
 pinMode(shwIsEmpty_led, OUTPUT);
   digitalWrite(rele_heat, HIGH);
-  digitalWrite(rele_light, HIGH);
-  digitalWrite(btn1_led, LOW);
+  digitalWrite(rele_light, lightIsOn);
+  digitalWrite(btn1_led, lightIsOn);
   digitalWrite(btn2_led, LOW);
   digitalWrite(shwIsEmpty_led, LOW);
 
@@ -238,7 +239,7 @@ void temperature(int time_ask_temperature){
 
 //============================ ISR btn1 (свет) ===================================
 ISR (PCINT2_vect) {
-btn1 = !digitalRead(btn1_pin); // считать текущее положение кнопки
+btn1 = !bitRead(PIND, btn1_pin); // считать текущее положение кнопки
   
   if (btn1 == 1 && btn1_flag == 0) // кнопка нажата, выставляю флаг
   {       
@@ -247,14 +248,15 @@ btn1 = !digitalRead(btn1_pin); // считать текущее положени
 
   if (btn1==0 && btn1_flag == 1)                      // кнопка отжата, начинаем обработку
   {                                   
+    btn1_flag=0;
     lightIsOn=!lightIsOn;
     digitalWrite(rele_light, lightIsOn);
     digitalWrite(btn1_led, !lightIsOn);        
+    EEPROM.write(1, lightIsOn);
     if (!lightIsOn)  shwIsFullLightState=false; 
-    btn1_flag=0;
    }
 //***************************************************************************
-btn2 = !digitalRead(btn2_pin); // считать текущее положение кнопки
+btn2 = !bitRead(PIND, btn2_pin); // считать текущее положение кнопки
   
   if (btn2 == 1 && btn2_flag == 0 && !modeMenu) // кнопка нажата, выставляю флаг
   {       
@@ -386,6 +388,7 @@ if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull)
   if (millis()-shwIsFull_time>15000 && shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 5 секунд
     digitalWrite(rele_light, HIGH);
     digitalWrite(btn1_led, LOW);
+    lightIsOn=false;
     shwIsFullLightState=false; 
   }
 }

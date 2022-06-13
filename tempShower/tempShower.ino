@@ -88,7 +88,7 @@ long btnEnc_Release_time=0;
 
 #define  hold_time 500  // время удержания кнопки для второй функиции
 #define  dbc 80         // время дребезга
-#define  dbc2 800         // время дребезга2
+#define  dbc2 2000         // время дребезга2
 
 
 //************************************************************************************************
@@ -136,6 +136,7 @@ pinMode(shwIsEmpty_led, OUTPUT);
   if ((shwIsFull)&&(!shwIsEmpty)){lcd.print(L"полный");}
   else  if ((!shwIsFull)&&(!shwIsEmpty)){lcd.print(L"больше 1/3");}
   else  if ((!shwIsFull)&&(shwIsEmpty)) {lcd.print(L"меньше 1/3");}
+  temperature(100);
 
 }
 
@@ -147,7 +148,7 @@ button1();
 
 if (!modeMenu){
 
-  if (!heatIsOn)  temperature(60000);
+  if (!heatIsOn)  temperature(10000);
   else if (heatIsOn) temperature(3000);
 button2();      
 level_sensor1();
@@ -286,14 +287,15 @@ void button2(){
   heatHyst=true;                                    //гистерезис догрева
   digitalWrite(rele_heat, HIGH);
   
-   lightIsOn=true;                              //Включаем свет для инидикации, что вода нагрелась                        
+   lightIsOn=true;                              //Включаем свет для инидикации, что вода нагрелась     
+   EEPROM.write(1, lightIsOn);                     
    digitalWrite(rele_light, LOW);
    digitalWrite(btn1_led, HIGH); 
    
   heat_LCD();
    }
   
-  if (heatIsOn&&(tempSet-temp>=1)&&!modeMenu&&heatHyst){
+  if (heatIsOn&&(tempSet-temp>=2)&&!modeMenu&&heatHyst){
     heatHyst=false;                               //гистерезис догрева  
   digitalWrite(rele_heat, LOW);
   heat_LCD();
@@ -307,7 +309,7 @@ if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull)
     {shwIsFull=true;  
     btn3_Press_time= millis();
     
-    if (!modeMenu && !heatIsOn){
+    if (!modeMenu && !heatIsOn ){
       digitalWrite(rele_light, LOW);     //включаем индикацию налитого бака (свет) 
       lightIsOn=true;
       digitalWrite(btn1_led, HIGH); 
@@ -318,13 +320,13 @@ if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull)
     }
  else if (!btn3 && millis() - btn3_Press_time > dbc2 && shwIsFull) 
     {shwIsFull=false;  
-     btn3_Press_time= millis();
+     btn3_Release_time= millis();
      if (!modeMenu && !heatIsOn){
      main_LCD();    
      }
     }
 
-  if (millis()-shwIsFull_time>15000 && shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 5 секунд
+  if (millis()-shwIsFull_time>15000 && shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 15 секунд
     digitalWrite(rele_light, HIGH);
     digitalWrite(btn1_led, LOW);
     lightIsOn=false;
@@ -335,7 +337,7 @@ if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull)
 //============================ уровень пустого (1/3 чтобы успеть) ===================================
 void level_sensor2(){
 btn4 = !digitalRead(level_sens2);
-if (btn4 && millis() - btn4_Press_time > dbc2 && shwIsEmpty) 
+if (!btn4 && millis() - btn4_Press_time > dbc2 && shwIsEmpty) 
     {shwIsEmpty=false;  
     btn4_Press_time= millis();
     digitalWrite(shwIsEmpty_led, LOW);
@@ -343,7 +345,7 @@ if (btn4 && millis() - btn4_Press_time > dbc2 && shwIsEmpty)
     main_LCD();
     }
     }
-  else if (!btn4 && millis() - btn4_Press_time > dbc2 && !shwIsEmpty) 
+  else if (btn4 && millis() - btn4_Press_time > dbc2 && !shwIsEmpty) 
     {shwIsEmpty=true;  
      btn4_Press_time= millis();
      digitalWrite(shwIsEmpty_led,HIGH );

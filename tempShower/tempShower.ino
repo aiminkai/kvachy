@@ -69,7 +69,7 @@ boolean btn3;
 long btn3_Press_time=0;
 long btn3_Release_time=0;
 long shwIsFull_time=0;
-boolean shwIsFullLightState=false;
+boolean shwIsFullLightState=true;
 
 boolean btn4_flag=false;
 boolean btn4;
@@ -305,35 +305,32 @@ void button2(){
 //============================ уровень полного ===================================
 void level_sensor1(){
   btn3 = !digitalRead(level_sens1);
-if (btn3 && millis() - btn3_Press_time > dbc2 && !shwIsFull) 
+if (btn3 && millis() - btn3_Press_time > dbc && !shwIsFull) 
     {shwIsFull=true;  
     btn3_Press_time= millis();
-    
-    if (!modeMenu && !heatIsOn ){
+    if (!modeMenu && !heatIsOn){main_LCD();}
+    }
+ else if (!btn3 && millis() - btn3_Release_time > dbc && shwIsFull) 
+    {shwIsFull=false;  
+     btn3_Release_time= millis();
+     if (!modeMenu && !heatIsOn){ main_LCD(); }  
+     }
+
+if (shwIsFull && shwIsFullLightState ){
       digitalWrite(rele_light, LOW);     //включаем индикацию налитого бака (свет) 
       lightIsOn=true;
       digitalWrite(btn1_led, HIGH); 
+      shwIsFullLightState=false;
       shwIsFull_time=millis();
-      shwIsFullLightState=true;
-      main_LCD();   
-      }
-    }
- else if (!btn3 && millis() - btn3_Press_time > dbc2 && shwIsFull) 
-    {shwIsFull=false;  
-     btn3_Release_time= millis();
-     if (!modeMenu && !heatIsOn){
-     main_LCD();    
-     }
-    }
-
-  if (millis()-shwIsFull_time>15000 && shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 15 секунд
+       }
+ if (millis()-shwIsFull_time==15000){      //выключаем индикацию налитого бака (свет) через 15 секунд
     digitalWrite(rele_light, HIGH);
     digitalWrite(btn1_led, LOW);
     lightIsOn=false;
-    shwIsFullLightState=false; 
-  }
+     }
+if (millis()-btn3_Release_time>20000&&!shwIsFull&&!shwIsFullLightState)
+ {shwIsFullLightState=true; }
 }
-
 //============================ уровень пустого (1/3 чтобы успеть) ===================================
 void level_sensor2(){
 btn4 = !digitalRead(level_sens2);

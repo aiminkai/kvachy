@@ -323,7 +323,7 @@ if (shwIsFull && shwIsFullLightState ){
       shwIsFullLightState=false;
       shwIsFull_time=millis();
        }
- if (millis()-shwIsFull_time==15000){      //выключаем индикацию налитого бака (свет) через 15 секунд
+ if (millis()-shwIsFull_time ==15000 && !shwIsFullLightState){      //выключаем индикацию налитого бака (свет) через 15 секунд
     digitalWrite(rele_light, HIGH);
     digitalWrite(btn1_led, LOW);
     lightIsOn=false;
@@ -334,7 +334,7 @@ if (millis()-btn3_Release_time>20000&&!shwIsFull&&!shwIsFullLightState)
 //============================ уровень пустого (1/3 чтобы успеть) ===================================
 void level_sensor2(){
 btn4 = !digitalRead(level_sens2);
-if (!btn4 && millis() - btn4_Press_time > dbc2 && shwIsEmpty) 
+if (!btn4 && millis() - btn4_Press_time > dbc && shwIsEmpty) 
     {shwIsEmpty=false;  
     btn4_Press_time= millis();
     digitalWrite(shwIsEmpty_led, LOW);
@@ -342,7 +342,7 @@ if (!btn4 && millis() - btn4_Press_time > dbc2 && shwIsEmpty)
     main_LCD();
     }
     }
-  else if (btn4 && millis() - btn4_Press_time > dbc2 && !shwIsEmpty) 
+  else if (btn4 && millis() - btn4_Press_time > dbc && !shwIsEmpty) 
     {shwIsEmpty=true;  
      btn4_Press_time= millis();
      digitalWrite(shwIsEmpty_led,HIGH );

@@ -53,6 +53,7 @@ boolean shwIsEmpty=false;         // душ 1/3
 boolean btn1Led=false;            // подсветка кнопки 1 
 boolean btn2Led=false;            // подсветка кнопки 2
 boolean lightIsOn=false;          // свет 
+boolean lightIsOnByHeat=false;    // свет для индикации нагрева
 
 boolean btn1_flag=false;
 boolean btn1;
@@ -63,6 +64,7 @@ boolean btn2_flag=false;
 boolean btn2;
 long btn2_Press_time=0;
 long btn2_Release_time=0;
+
 
 boolean btn3_flag=false;
 boolean btn3;
@@ -253,7 +255,7 @@ btn1 = !digitalRead(btn1_pin); // считать текущее положени
          digitalWrite(rele_light, lightIsOn);
          digitalWrite(btn1_led, !lightIsOn);      
          EEPROM.write(1, lightIsOn);  
-         if (!lightIsOn)  shwIsFullLightState=false;
+         if (!lightIsOn) {shwIsFullLightState=false;lightIsOnByHeat=false;}
          
    }
 }
@@ -278,7 +280,7 @@ void button2(){
           digitalWrite(btn2_led, heatIsOn);
           digitalWrite(rele_heat, !heatIsOn);
           heatHyst=false;
-         if (heatIsOn){heat_LCD();}
+         if (heatIsOn){heat_LCD();lightIsOnByHeat=true;}
           else  if (!heatIsOn){main_LCD();}        
          
    }
@@ -287,10 +289,11 @@ void button2(){
   heatHyst=true;                                    //гистерезис догрева
   digitalWrite(rele_heat, HIGH);
   
+   if (lightIsOnByHeat){
    lightIsOn=true;                              //Включаем свет для инидикации, что вода нагрелась     
    EEPROM.write(1, lightIsOn);                     
    digitalWrite(rele_light, LOW);
-   digitalWrite(btn1_led, HIGH); 
+   digitalWrite(btn1_led, HIGH); }
    
   heat_LCD();
    }
